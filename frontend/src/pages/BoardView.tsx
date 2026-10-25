@@ -262,16 +262,22 @@ export default function BoardView() {
         gap: '4px',
         padding: '4px',
       }}>
-        {/* Category headers */}
-        {round.categories.map(cat => (
-          <div
-            key={cat.id}
-            className="bg-jeopardy-blue border-4 border-black text-jeopardy-gold font-black text-center flex items-center justify-center p-2"
-            style={{ minHeight: '80px', fontSize: 'clamp(10px, 1.5vw, 20px)', textTransform: 'uppercase', textShadow: '1px 1px 0 #000' }}
-          >
-            {cat.name || 'CATEGORY'}
-          </div>
-        ))}
+      {/* Category headers */}
+      {round.categories.map(cat => (
+        <div
+          key={cat.id}
+          className="bg-jeopardy-blue border-4 border-black text-white font-black text-center flex items-center justify-center p-2"
+          style={{
+            minHeight: '80px',
+            fontSize: 'clamp(18px, 2.5vw, 36px)',
+            textTransform: 'uppercase',
+            textShadow: '2px 2px 0 #000',
+            overflowWrap: 'anywhere',
+          }}
+        >
+          {cat.name || 'CATEGORY'}
+        </div>
+      ))}
 
         {/* Question cells */}
         {round.pointValues.map(pv => (
