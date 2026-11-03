@@ -1,5 +1,21 @@
 # Shared buzzer Wi-Fi setup (issue #16)
 
+## Try the setup page without boards
+
+From the repo root, run `npm run preview:setup` and open
+[the local preview](http://127.0.0.1:4176). The setup page password is
+**jeopardy-demo**. Choose any sample Wi-Fi, enter a made-up password of at least
+eight characters, and use `ws://192.168.1.42:3001/hardware/buzzers` as the sample
+server address. Save, watch all four statuses, and Finish.
+
+The Test controls panel lets you turn Yellow off before saving, turn it back on
+to receive settings, slow delivery, or start over. It serves the actual firmware
+HTML and page script, with simulated HTTP responses and buzzer progress. It does
+not scan/connect Wi-Fi, send settings to physical devices, retain submitted
+passwords, or verify the firmware radio/storage implementation. The separate
+desktop harness below exercises that shared protocol implementation. The server
+listens only on this computer, and Ctrl+C stops it. No extra dependencies needed.
+
 ## What you do
 
 1. On each buzzer, hold its button while turning it on/resetting it. Keep holding

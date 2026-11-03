@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "test:firmware": "node firmware/scripts/test.mjs",
+    "preview:setup": "node firmware/scripts/preview.mjs",
     "dev": "start cmd /k \"cd backend && npm run dev\" && start cmd /k \"cd frontend && npm run dev\"",
     "build": "npm run build --prefix frontend && npm run build --prefix backend",
     "start": "npm start --prefix backend",
