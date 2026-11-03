@@ -259,3 +259,22 @@ lobby ──host:start──► playing ──host:end-game (or auto-end)──�
 - **Last round, no Final Jeopardy configured** — the server calls `endGame` itself, setting `phase: 'finished'` and broadcasting the update; every client (host, board, each phone) switches to the shared `Leaderboard` the moment they receive it.
 
 `endGame`/`resumeGame` (via `host:end-game`/`host:resume-game`) let the host do the same thing manually at any time, including mid-Final-Jeopardy (which also tears down the FJ secrets). This is distinct from `host:end`, which deletes the session outright ("Close Room" in the UI) and is irreversible.
+
+### Physical color reservations
+
+Player join accepts an optional `physicalColor` (`blue`, `green`, `red`, or
+`yellow`), separate from the cosmetic `color`. Omission means browser only.
+`buzzers:watch` with `{ roomCode }` subscribes that socket to live
+`buzzers:availability` snapshots. Only online colors appear in the join form;
+reserved colors are disabled, including all colors when another room owns the
+physical set. The server checks availability and adds the player synchronously,
+so stale or competing selections cannot reserve the same color or split the set
+across games. A failed selection returns an error and a fresh snapshot.
+
+Assignments live on the server-side player, independently of phone sockets and
+hardware connectivity. Offline assignments remain displayed on the player's
+page and survive rejoin. Removing the player, ending the game, or deleting the
+room releases ownership. The last release frees the set for another room.
+Browser-only joins remain available while the set is occupied. Hardware press
+routing and host assignment editing are tracked separately in issues #15 and
+#14.

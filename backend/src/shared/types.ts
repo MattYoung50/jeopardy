@@ -55,6 +55,7 @@ export interface PlayerStats {
 }
 
 export interface Player {
+  physicalColor?: PhysicalColor;
   id: string;
   name: string;
   score: number;
@@ -145,3 +146,7 @@ export interface GameState {
   };
   currentRoundIndex: number;
 }
+
+export const PHYSICAL_COLORS = ['blue', 'green', 'red', 'yellow'] as const;
+export type PhysicalColor = typeof PHYSICAL_COLORS[number];
+export interface BuzzerAvailability { color: PhysicalColor; online: boolean; reserved: boolean; }

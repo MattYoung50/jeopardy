@@ -281,3 +281,98 @@ test('hardware presses leave gameplay untouched and the browser buzzer still win
   host.emit(E.HOST_END, { roomCode });
   await ended;
 });
+
+// Reservation ownership is independent of transport connectivity.
+import * as gm from '../src/socket/gameManager.js';
+import { getBuzzerAvailability, setDeviceOnline } from '../src/socket/gameManager/reservations.js';
+
+test('physical reservations enforce exclusivity and survive disconnects until lifecycle release', async () => {
+  const a = gm.createSession('reservation-test');
+  const b = gm.createSession('reservation-test');
+  try {
+    assert.equal(gm.addPlayer(a.roomCode, 'Offline', '#fff', 'blue'), null);
+    setDeviceOnline('blue', true);
+    setDeviceOnline('green', true);
+    const claims = await Promise.all([
+      Promise.resolve().then(() => gm.addPlayer(a.roomCode, 'One', '#fff', 'blue')),
+      Promise.resolve().then(() => gm.addPlayer(a.roomCode, 'Two', '#fff', 'blue')),
+      Promise.resolve().then(() => gm.addPlayer(b.roomCode, 'Other room', '#fff', 'green')),
+    ]);
+    assert.equal(claims.filter(Boolean).length, 1);
+    const owner = claims[0]!;
+    assert.equal(owner.physicalColor, 'blue');
+    assert.equal(owner.color, 'blue');
+    assert(gm.addPlayer(b.roomCode, 'Browser only', '#fff'));
+    setDeviceOnline('blue', false);
+    assert.equal(owner.physicalColor, 'blue');
+    assert.deepEqual(getBuzzerAvailability(a.roomCode).find(s => s.color === 'blue'), { color: 'blue', online: false, reserved: true });
+    setDeviceOnline('blue', true);
+    assert.equal(owner.physicalColor, 'blue');
+    gm.removePlayer(a.roomCode, owner.id);
+    assert(gm.addPlayer(b.roomCode, 'New owner', '#fff', 'blue'));
+    gm.endGame(b.roomCode);
+    assert(b.players.every(p => !p.physicalColor));
+    assert(gm.addPlayer(a.roomCode, 'After end', '#fff', 'green'));
+    gm.deleteSession(a.roomCode);
+    gm.resumeGame(b.roomCode);
+    assert(gm.addPlayer(b.roomCode, 'After deletion', '#fff', 'green'));
+  } finally {
+    gm.deleteSession(a.roomCode);
+    gm.deleteSession(b.roomCode);
+    setDeviceOnline('blue', false);
+    setDeviceOnline('green', false);
+  }
+});
+
+test('socket joins race safely, refresh stale claims, and rejoin preserves offline assignment', { timeout: 5000 }, async t => {
+  const f = await fixture(t);
+  registerSocketHandlers(f.io);
+  const room = gm.createSession('reservation-socket-test');
+  const other = gm.createSession('reservation-socket-test');
+  const clients = Array.from({ length: 3 }, () => connectBrowser(f.origin, { transports: ['websocket'], reconnection: false }));
+  t.after(() => {
+    for (const client of clients) client.disconnect();
+    gm.deleteSession(room.roomCode);
+    gm.deleteSession(other.roomCode);
+    setDeviceOnline('blue', false);
+    setDeviceOnline('green', false);
+  });
+  await Promise.all(clients.map(client => socketEvent(client, 'connect')));
+  setDeviceOnline('blue', true);
+  setDeviceOnline('green', true);
+  const results = clients.map(client => new Promise<{ client: Socket; joined?: any; error?: string }>(resolve => {
+    client.once(E.PLAYER_JOINED, joined => resolve({ client, joined }));
+    client.once('error', error => resolve({ client, error: error.message }));
+  }));
+  const refreshed = socketEvent(clients[1], E.BUZZER_AVAILABILITY);
+  clients[0].emit(E.PLAYER_JOIN, { roomCode: room.roomCode, name: 'First', color: '#fff', physicalColor: 'blue' });
+  clients[1].emit(E.PLAYER_JOIN, { roomCode: room.roomCode, name: 'Second', color: '#fff', physicalColor: 'blue' });
+  clients[2].emit(E.PLAYER_JOIN, { roomCode: other.roomCode, name: 'Third', color: '#fff', physicalColor: 'green' });
+  const settled = await Promise.all(results);
+  assert.equal(settled.filter(r => r.joined).length, 1);
+  assert(settled.filter(r => r.error).every(r => /reserved|another game/.test(r.error!)));
+  assert((await refreshed)[0].find((s: any) => s.color === 'blue').reserved);
+  const winner = settled.find(r => r.joined)!;
+  const playerId = winner.joined.player.id;
+  winner.client.disconnect();
+  setDeviceOnline('blue', false);
+  // Use a fresh browser socket to restore the same persistent player.
+  const replacement = connectBrowser(f.origin, { transports: ['websocket'], reconnection: false });
+  clients.push(replacement);
+  await socketEvent(replacement, 'connect');
+  const rejoined = socketEvent(replacement, E.PLAYER_JOINED);
+  replacement.emit(E.PLAYER_REJOIN, { roomCode: room.roomCode, playerId });
+  assert.equal((await rejoined)[0].player.physicalColor, 'blue');
+  assert.equal(room.players.length, 1);
+  setDeviceOnline('blue', true);
+  const hostJoined = socketEvent(replacement, E.GAME_STATE);
+  replacement.emit(E.HOST_JOIN, { roomCode: room.roomCode });
+  await hostJoined;
+  const ended = socketEvent(replacement, E.GAME_ENDED);
+  replacement.emit(E.HOST_END, { roomCode: room.roomCode });
+  await ended;
+  assert.equal(gm.getSession(room.roomCode), undefined);
+  const nextJoin = socketEvent(clients[2], E.PLAYER_JOINED);
+  clients[2].emit(E.PLAYER_JOIN, { roomCode: other.roomCode, name: 'After cancellation', color: '#fff', physicalColor: 'blue' });
+  assert.equal((await nextJoin)[0].player.physicalColor, 'blue');
+});

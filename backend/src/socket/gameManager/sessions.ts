@@ -1,3 +1,5 @@
+import { availabilityChanged, releaseRoomReservations, validatePhysicalClaim } from './reservations.js';
+import type { PhysicalColor } from '../../shared/types.js';
 import { randomUUID as uuidv4 } from 'crypto';
 import type { GameState, Player } from '../../types.js';
 import { LIMITS } from '../../shared/limits.js';
@@ -46,6 +48,7 @@ export function getSession(roomCode: string): GameState | undefined {
 }
 
 export function deleteSession(roomCode: string) {
+  releaseRoomReservations(roomCode);
   sessions.delete(roomCode);
   lastActivityAt.delete(roomCode);
 }
@@ -72,12 +75,17 @@ export function isNameTaken(session: GameState, name: string, excludePlayerId?: 
   return session.players.some(p => p.id !== excludePlayerId && p.name.trim().toLowerCase() === normalized);
 }
 
-export function addPlayer(roomCode: string, name: string, color: string): Player | null {
+export function addPlayer(roomCode: string, name: string, color: string, physicalColor?: PhysicalColor): Player | null {
   const session = sessions.get(roomCode);
   if (!session) return null;
-  if (isNameTaken(session, name)) return null;
-  const player: Player = { id: uuidv4(), name, score: 0, color };
+  if (session.phase === 'finished' || isNameTaken(session, name) || validatePhysicalClaim(roomCode, physicalColor)) return null;
+  const player: Player = {
+    id: uuidv4(), name, score: 0,
+    color: physicalColor ?? color,
+    physicalColor,
+  };
   session.players.push(player);
+  availabilityChanged();
   return player;
 }
 
@@ -85,6 +93,7 @@ export function removePlayer(roomCode: string, playerId: string) {
   const session = sessions.get(roomCode);
   if (!session) return;
   session.players = session.players.filter(p => p.id !== playerId);
+  availabilityChanged();
 }
 
 export function renamePlayer(roomCode: string, playerId: string, newName: string): { ok: boolean; error?: string } {
@@ -108,6 +117,7 @@ export function endGame(roomCode: string): boolean {
   const session = sessions.get(roomCode);
   if (!session) return false;
   session.phase = 'finished';
+  releaseRoomReservations(roomCode);
   session.activeQuestionId = null;
   resetBuzzerFields(session, { buzzerState: 'idle', clearLockouts: true });
   session.dailyDouble = null;

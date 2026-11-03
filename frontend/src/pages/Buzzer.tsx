@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { socket } from '../socket';
 import { useGameStore } from '../store/gameStore';
-import type { GameState } from '@shared/types';
+import type { BuzzerAvailability, GameState } from '@shared/types';
 import { SOCKET_EVENTS } from '@shared/socketEvents';
 import { LIMITS } from '@shared/limits';
 import PlayerFinal from '../components/final/PlayerFinal';
@@ -22,6 +22,8 @@ export default function Buzzer() {
   const { gameState, setGameState, setMyPlayer } = useGameStore();
   const [phase, setPhase] = useState<BuzzerPhase>('join');
   const [name, setName] = useState('');
+  const [physicalColor, setPhysicalColor] = useState('');
+  const [availability, setAvailability] = useState<BuzzerAvailability[]>([]);
   const [error, setError] = useState('');
   const [winnerName, setWinnerName] = useState('');
   const [myId, setMyId] = useState('');
@@ -43,6 +45,7 @@ export default function Buzzer() {
   useEffect(() => {
     if (!roomCode) return;
     function tryRejoin() {
+      socket.emit(SOCKET_EVENTS.WATCH_BUZZERS, { roomCode });
       const savedId = localStorage.getItem(rejoinKey(roomCode));
       if (savedId) socket.emit(SOCKET_EVENTS.PLAYER_REJOIN, { roomCode, playerId: savedId });
     }
@@ -52,6 +55,9 @@ export default function Buzzer() {
   }, [roomCode]);
 
   useEffect(() => {
+    const updateAvailability = (items: BuzzerAvailability[]) => setAvailability(items);
+    socket.on(SOCKET_EVENTS.BUZZER_AVAILABILITY, updateAvailability);
+    socket.emit(SOCKET_EVENTS.WATCH_BUZZERS, { roomCode });
     socket.on(SOCKET_EVENTS.GAME_STATE, (state: GameState) => {
       setGameState(state);
       if (state.phase === 'finished') { setPhase('finished'); return; }
@@ -65,6 +71,7 @@ export default function Buzzer() {
     });
     socket.on(SOCKET_EVENTS.PLAYER_JOINED, ({ player, state }: { player: { id: string; name: string }; state: GameState }) => {
       setMyId(player.id);
+      setName(player.name);
       setMyPlayer(player as any);
       setGameState(state);
       setPhase('waiting');
@@ -90,6 +97,7 @@ export default function Buzzer() {
     socket.on(SOCKET_EVENTS.GAME_ENDED, () => setPhase('closed'));
     socket.on('error', ({ message }: { message: string }) => setError(message));
     return () => {
+      socket.off(SOCKET_EVENTS.BUZZER_AVAILABILITY, updateAvailability);
       socket.off(SOCKET_EVENTS.GAME_STATE);
       socket.off(SOCKET_EVENTS.PLAYER_JOINED);
       socket.off(SOCKET_EVENTS.BUZZ_WINNER);
@@ -104,7 +112,7 @@ export default function Buzzer() {
   function joinGame() {
     if (!name.trim()) { setError('Enter your name'); return; }
     setError('');
-    socket.emit(SOCKET_EVENTS.PLAYER_JOIN, { roomCode, name: name.trim(), color: randomPlayerColor() });
+    socket.emit(SOCKET_EVENTS.PLAYER_JOIN, { roomCode, name: name.trim(), color: randomPlayerColor(), physicalColor: physicalColor || undefined });
   }
 
   function buzz() {
@@ -138,6 +146,8 @@ export default function Buzzer() {
     });
   }
 
+  const assignment = gameState?.players.find(p => p.id === myId)?.physicalColor;
+  const selectedAvailable = !physicalColor || availability.some(a => a.color === physicalColor && a.online && !a.reserved);
   const myScore = gameState?.players.find(p => p.id === myId)?.score ?? 0;
   const isDDWagering = !!(gameState?.dailyDouble && gameState.dailyDouble.playerId === myId
     && gameState.dailyDouble.stage === 'wagering' && gameState.dailyDouble.hasDevice);
@@ -150,6 +160,7 @@ export default function Buzzer() {
         Room: <span className="text-jeopardy-gold font-bold tracking-widest">{roomCode}</span>
       </div>
 
+      {myId && assignment && phase !== 'finished' && phase !== 'closed' && <p className="text-gray-300 mb-4">Physical buzzer: {assignment} ({availability.find(a => a.color === assignment)?.online ? 'online' : 'offline — reserved for you'}). Your browser buzzer also works.</p>}
       {/* JOIN phase */}
       {phase === 'join' && (
         <div className="w-full max-w-sm">
@@ -164,8 +175,14 @@ export default function Buzzer() {
             onChange={e => setName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && joinGame()}
           />
+          <label htmlFor="physical-buzzer" className="block text-gray-300 mb-2">Buzzer</label>
+          <select id="physical-buzzer" className="input-field mb-4" value={physicalColor} onChange={e => setPhysicalColor(e.target.value)}>
+            <option value="">Browser buzzer only</option>
+            {availability.filter(a => a.online).map(a => <option key={a.color} value={a.color} disabled={a.reserved}>{a.color[0].toUpperCase() + a.color.slice(1)}{a.reserved ? ' — unavailable' : ''}</option>)}
+          </select>
+          {!selectedAvailable && <p className="text-red-400 mb-3">That buzzer is no longer available. Choose again.</p>}
           {error && <p className="text-red-400 text-center mb-3">{error}</p>}
-          <button className="btn-primary w-full text-xl py-4" onClick={joinGame}>
+          <button className="btn-primary w-full text-xl py-4" onClick={joinGame} disabled={!selectedAvailable}>
             Join Game
           </button>
         </div>

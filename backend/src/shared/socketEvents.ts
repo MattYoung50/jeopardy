@@ -7,6 +7,8 @@
 export const SOCKET_EVENTS = {
   // Buzzer
   BUZZ: 'buzz',
+  WATCH_BUZZERS: 'buzzers:watch',
+  BUZZER_AVAILABILITY: 'buzzers:availability',
   BUZZ_WINNER: 'buzz:winner',
   BUZZ_TOO_LATE: 'buzz:too-late',
   BUZZ_LOCKED_OUT: 'buzz:locked-out',
