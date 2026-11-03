@@ -51,4 +51,3 @@ Published in the user's fork: [Wireless Jeopardy buzzers: Phase 1 wayfinder map]
 The map links three resolved decision/verification sub-issues and records the later-phase
 scope. The Phase 1 map is closed because its decisions are resolved; source review
 takes place on the `feature/hardware-buzzers-phase1` pull request against this fork.
-
