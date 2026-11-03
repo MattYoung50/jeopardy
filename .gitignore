@@ -45,6 +45,12 @@ Thumbs.db
 dist/
 coverage/
 
+# Firmware build products and factory credentials
+firmware/.pio/
+firmware/.generated/
+firmware/factory.local.json
+.venv-firmware/
+
 # User data (boards and uploaded media — created at runtime)
 backend/data/
 

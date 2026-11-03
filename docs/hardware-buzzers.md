@@ -1,5 +1,8 @@
 # Hardware buzzers — Phase 1
 
+For XIAO firmware, the five-second startup hold, and the shared **Jeopardy Buzzer
+Setup** Wi-Fi page, see [Shared buzzer Wi-Fi setup](firmware-setup.md).
+
 Four authenticated devices (`blue`, `green`, `red`, `yellow`) can connect and send
 presses independently of the existing browser game. This phase records connection
 status and acknowledges validated presses. A receipt does not mean the device won
@@ -91,7 +94,8 @@ Authorization: Bearer <blue-device-secret>
 IDs are lowercase and fixed. The authenticated connection establishes identity;
 press payloads cannot specify another device. Secrets in URL query parameters are
 not accepted. Use `wss://` behind TLS for untrusted networks: plain `ws://` does not
-encrypt credentials. This phase supplies the server and simulator, not ESP32 firmware.
+encrypt credentials. Phase 1 supplies the server and simulator; the separate
+shared-setup firmware is documented above. Press transport follows in issue #17.
 
 The server first sends:
 
