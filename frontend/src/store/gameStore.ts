@@ -1,3 +1,4 @@
+import { newId } from '../utils/id';
 import { create } from 'zustand';
 import type { GameState, Player } from '@shared/types';
 
@@ -38,7 +39,7 @@ export const useGameStore = create<GameStore>((set) => ({
   setRoomCode: (roomCode) => set({ roomCode }),
   setConnected: (connected) => set({ connected }),
   addLog: (entry) => set(s => ({
-    gameLog: [{ ...entry, id: crypto.randomUUID(), ts: now() }, ...s.gameLog].slice(0, 200),
+    gameLog: [{ ...entry, id: newId(), ts: now() }, ...s.gameLog].slice(0, 200),
   })),
   clearLog: () => set({ gameLog: [] }),
 }));

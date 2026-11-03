@@ -7,6 +7,7 @@ import Editor from './pages/Editor';
 import Host from './pages/Host';
 import BoardView from './pages/BoardView';
 import Buzzer from './pages/Buzzer';
+import PlayerQR from './pages/PlayerQR';
 import type { GameState, Player } from '@shared/types';
 import { SOCKET_EVENTS } from '@shared/socketEvents';
 
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="/host/:boardId" element={<Host />} />
         <Route path="/board/:roomCode" element={<BoardView />} />
         <Route path="/buzz/:roomCode" element={<Buzzer />} />
+        <Route path="/qr/:roomCode" element={<PlayerQR />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

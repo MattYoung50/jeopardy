@@ -19,11 +19,10 @@ function promptForPasscode(): string | null {
 }
 
 // Wraps fetch for mutating host requests (board/media writes): attaches the
-// passcode header, prompting once if none is stored yet, and clears +
-// re-prompts on a 401 so a stale or wrong passcode doesn't get stuck.
+// stored passcode header, and only prompts on a 401 from a protected server.
+// Local servers without a passcode must not require a browser prompt.
 export async function hostFetch(input: string, init: RequestInit = {}): Promise<Response> {
-  let passcode = getStoredPasscode();
-  if (!passcode) passcode = promptForPasscode();
+  const passcode = getStoredPasscode();
 
   const headers = new Headers(init.headers);
   if (passcode) headers.set('X-Host-Passcode', passcode);
