@@ -41,6 +41,10 @@ and the [wireless buzzer gameplan](docs/hardware-buzzer-gameplan.md).
 
 The host runs the game from the Host Panel. The board display goes on the main screen (TV/projector). Players connect to the Buzzer page from their phones — no account, no install, just a URL and a name.
 
+To project a join code, use **Player QR code (project this)** in the host's sharing links. **Open** displays `/qr/<roomCode>` on a separate screen; **Copy** shares that display URL. The page generates its QR locally and sends scanning phones directly to the normal `/buzz/<roomCode>` player page. It also shows the room code and a copyable player URL. For local games, open the host using its LAN address and connect phones to the same Wi-Fi; sharing a localhost address will not work on other devices. The QR display stays available when a game ends or a room closes, and opening it does not join the game.
+
+Run the frontend QR decode and sharing checks with `npm test --prefix frontend`.
+
 ---
 
 ## Quick Start (Local)

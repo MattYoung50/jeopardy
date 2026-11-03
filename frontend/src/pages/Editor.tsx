@@ -1,3 +1,4 @@
+import { newId } from '../utils/id';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { Board, Category, Question, FinalJeopardyBoard, Round } from '@shared/types';
@@ -7,14 +8,14 @@ import { hostFetch } from '../lib/hostAuth';
 const API = '/api';
 
 function newQuestion(value: number): Question {
-  return { id: crypto.randomUUID(), value, clue: '', response: '' };
+  return { id: newId(), value, clue: '', response: '' };
 }
 function newCategory(pointValues: number[]): Category {
-  return { id: crypto.randomUUID(), name: '', questions: pointValues.map(newQuestion) };
+  return { id: newId(), name: '', questions: pointValues.map(newQuestion) };
 }
 function newRound(categoryCount: number, pointValues: number[], name?: string): Round {
   return {
-    id: crypto.randomUUID(),
+    id: newId(),
     name,
     categories: Array.from({ length: categoryCount }, () => newCategory(pointValues)),
     pointValues,
@@ -23,13 +24,13 @@ function newRound(categoryCount: number, pointValues: number[], name?: string): 
 function duplicateRound(round: Round, doubleValues: boolean): Round {
   const pointValues = doubleValues ? round.pointValues.map(v => v * 2) : [...round.pointValues];
   return {
-    id: crypto.randomUUID(),
+    id: newId(),
     name: round.name,
     pointValues,
     categories: round.categories.map(cat => ({
-      id: crypto.randomUUID(),
+      id: newId(),
       name: cat.name,
-      questions: cat.questions.map((q, i) => ({ ...q, id: crypto.randomUUID(), value: pointValues[i] ?? q.value })),
+      questions: cat.questions.map((q, i) => ({ ...q, id: newId(), value: pointValues[i] ?? q.value })),
     })),
   };
 }
