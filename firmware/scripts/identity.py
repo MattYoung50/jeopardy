@@ -27,7 +27,7 @@ for name in colors:
 require(len({devices[c]['token'] for c in colors}) == 4, 'Backend tokens must be distinct')
 require(len({devices[c]['mac'].lower() for c in colors}) == 4, 'STA MACs must be distinct')
 require(len({devices[c]['lmk'] for c in colors[1:]}) == 3, 'Pairwise LMKs must be distinct')
-for key in ['apPassword', 'webPassword']:
+for key in ['apPassword']:
     require(re.fullmatch(r'[0-9a-f]{32}', factory[key]), 'Expected generated setup passwords')
 def array(hex_string):
     return '{' + ','.join('0x' + hex_string[i:i+2] for i in range(0, len(hex_string), 2)) + '}'
@@ -45,10 +45,9 @@ for peer in peers:
     lines.append('{%d,%s,%s},' % (colors.index(peer), array(devices[peer]['mac'].replace(':', '')), array(key)))
 lines.append('};')
 if color == 'blue':
-    lines += ['constexpr const char* AP_PASSWORD = %s;' % json.dumps(factory['apPassword']),
-              'constexpr const char* WEB_PASSWORD = %s;' % json.dumps(factory['webPassword'])]
+    lines += ['constexpr const char* AP_PASSWORD = %s;' % json.dumps(factory['apPassword'])]
 else:
-    lines += ['constexpr const char* AP_PASSWORD = "";', 'constexpr const char* WEB_PASSWORD = "";']
+    lines += ['constexpr const char* AP_PASSWORD = "";']
 out = root / '.generated' / color
 out.mkdir(parents=True, exist_ok=True)
 (out / 'identity.h').write_text('\n'.join(lines) + '\n')

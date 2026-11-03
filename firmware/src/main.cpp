@@ -66,7 +66,7 @@ struct EspRadio : Radio {
 Setup* provision = nullptr;
 WebServer web(80);
 DNSServer dns;
-String csrf, session;
+String csrf;
 String networkOptions;
 bool setupMode = false;
 bool joined = false;
@@ -93,12 +93,9 @@ String randomString() {
   return String(value);
 }
 void noCache() { web.sendHeader("Cache-Control", "no-store"); web.sendHeader("X-Content-Type-Options", "nosniff"); }
-bool loggedIn() {
-  return session.length() && web.header("Cookie").indexOf("setup=" + session) >= 0;
-}
 bool authorizedPost() {
-  if (!loggedIn() || web.arg("csrf") != csrf) {
-    noCache(); web.send(403, "text/plain", "Open the setup page and sign in again."); return false;
+  if (web.arg("csrf") != csrf) {
+    noCache(); web.send(403, "text/plain", "Reload the setup page and try again."); return false;
   }
   return true;
 }
@@ -108,36 +105,16 @@ void redirectHome() {
 void home() {
   noCache();
   String page = PAGE_START;
-  if (!loggedIn()) {
-    page += "<p>Configure all four buzzers from Blue.</p><form method='post' action='/login'><label>Setup page password<input name='password' type='password' required autocomplete='current-password'></label><button>Open setup</button></form></body></html>";
-  } else {
-    page += "<p>Put all four buzzers in setup mode. Choose your home Wi-Fi and enter its password once.</p><form method='post' action='/settings'><input type='hidden' name='csrf' value='" + csrf + "'><label>Home Wi-Fi<select name='ssid'>" + networkOptions + "</select></label>";
-    page += "<small>If your network is missing, restart Blue to scan again. Hidden networks can be entered below.</small><label>Hidden network name (optional)<input name='hidden' maxlength='32'></label><label>Home Wi-Fi password<input name='password' type='password' maxlength='63' autocomplete='new-password'></label>";
-    page += "<label>Jeopardy server address<input name='backend' placeholder='ws://192.168.1.42:3001/hardware/buzzers' maxlength='96' required></label><small>Use the backend computer's address, not this setup page. Device credentials are already installed separately.</small><button id='save'>Save to all four buzzers</button></form>";
-    page += "<ul><li id='blue'>Blue</li><li id='green'>Green</li><li id='red'>Red</li><li id='yellow'>Yellow</li></ul><p id='message'>Wait for all four to show Settings saved, then finish.</p><form method='post' action='/finish'><input type='hidden' name='csrf' value='" + csrf + "'><button id='finish' disabled>Finish and join home Wi-Fi</button></form>";
-    page += PAGE_SCRIPT;
-  }
+  page += "<p>Put all four buzzers in setup mode. Choose your home Wi-Fi and enter its password once.</p><form method='post' action='/settings'><input type='hidden' name='csrf' value='" + csrf + "'><label>Home Wi-Fi<select name='ssid'>" + networkOptions + "</select></label>";
+  page += "<small>If your network is missing, restart Blue to scan again. Hidden networks can be entered below.</small><label>Hidden network name (optional)<input name='hidden' maxlength='32'></label><label>Home Wi-Fi password<input name='password' type='password' maxlength='63' autocomplete='new-password'></label>";
+  page += "<label>Jeopardy server address<input name='backend' placeholder='ws://192.168.1.42:3001/hardware/buzzers' maxlength='96' required></label><small>Use the backend computer's address, not this setup page. Device credentials are already installed separately.</small><button id='save'>Save to all four buzzers</button></form>";
+  page += "<ul><li id='blue'>Blue</li><li id='green'>Green</li><li id='red'>Red</li><li id='yellow'>Yellow</li></ul><p id='message'>Wait for all four to show Settings saved, then finish.</p><form method='post' action='/finish'><input type='hidden' name='csrf' value='" + csrf + "'><button id='finish' disabled>Finish and join home Wi-Fi</button></form>";
+  page += PAGE_SCRIPT;
   web.send(200, "text/html; charset=utf-8", page);
 }
 void startPortal() {
   csrf = randomString();
-  const char* headers[] = {"Cookie"}; web.collectHeaders(headers, 1);
   web.on("/", HTTP_GET, home);
-  web.on("/login", HTTP_POST, [] {
-    static uint32_t lastLogin = 0;
-    static bool attempted = false;
-    uint32_t now = millis();
-    if (attempted && uint32_t(now - lastLogin) < 1000) { web.send(429, "text/plain", "Wait a second and try again."); return; }
-    attempted = true; lastLogin = now;
-    String supplied = web.arg("password");
-    if (supplied.length() != strlen(WEB_PASSWORD) || !equalBytes(
-        reinterpret_cast<const uint8_t*>(supplied.c_str()), reinterpret_cast<const uint8_t*>(WEB_PASSWORD), supplied.length())) {
-      noCache(); web.send(403, "text/plain", "Incorrect setup page password. Go back to try again."); return;
-    }
-    session = randomString();
-    web.sendHeader("Set-Cookie", "setup=" + session + "; Path=/; HttpOnly; SameSite=Strict");
-    redirectHome();
-  });
   web.on("/settings", HTTP_POST, [] {
     if (!authorizedPost()) return;
     Settings s{};
@@ -154,7 +131,6 @@ void startPortal() {
   });
   web.on("/status", HTTP_GET, [] {
     noCache();
-    if (!loggedIn()) { web.send(403, "text/plain", "Sign in first"); return; }
     String json = "{\"allSaved\":" + String(provision->allSaved() ? "true" : "false") +
       ",\"releasing\":" + String(provision->releasing() ? "true" : "false") + ",\"devices\":[";
     for (uint8_t i = 0; i < 4; ++i) {

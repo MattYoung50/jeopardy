@@ -12,10 +12,7 @@ const raw = name => {
 };
 const home = main.split('void home() {')[1]?.split('void startPortal()')[0];
 if (!home) throw new Error('Cannot find firmware home page');
-const [loginSource, formSource] = home.split('} else {');
 const csrf = randomBytes(16).toString('hex');
-const password = 'jeopardy-demo';
-const sessions = new Set();
 const colors = ['blue', 'green', 'red', 'yellow'];
 const networks = ['Game Night Wi-Fi', 'Home Network', 'Guest Wi-Fi', 'Test & "Quotes"'];
 const escape = value => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
@@ -32,7 +29,7 @@ function render(source) {
     }).join(''),
   ).join('');
 }
-const loginHtml = render(loginSource), formHtml = render(formSource);
+const formHtml = render(home);
 let devices, savedAt, releasing, weakSignal;
 function reset() {
   devices = colors.map(color => ({ color, online: true, seen: true, saved: false, released: false }));
@@ -48,7 +45,7 @@ function status() {
   });
   return { allSaved: devices.every(device => device.saved), releasing, weakSignal, devices };
 }
-const previewControls = `<aside style="padding:16px;border:1px solid #6879ac;border-radius:8px;margin-bottom:24px;font-size:15px"><strong>Local preview · simulated buzzers</strong><p>No real Wi-Fi scan, connection, or network changes. Use a made-up home password.</p><p>Setup page password: <code>${password}</code></p><details><summary>Test controls</summary><p>Turn Yellow off before saving to try a missing buzzer. Turn it back on and watch it catch up.</p><label style="display:flex;gap:10px;align-items:center"><input id="yellow-online" type="checkbox" style="width:auto;margin:0" checked>Yellow powered on</label><label style="display:flex;gap:10px;align-items:center;margin:12px 0"><input id="weak-signal" type="checkbox" style="width:auto;margin:0">Slow down delivery</label><button id="preview-reset" type="button">Start over</button><p id="preview-message" aria-live="polite"></p></details></aside>`;
+const previewControls = `<aside style="padding:16px;border:1px solid #6879ac;border-radius:8px;margin-bottom:24px;font-size:15px"><strong>Local preview · simulated buzzers</strong><p>No real Wi-Fi scan, connection, or network changes. Use a made-up home password.</p><details><summary>Test controls</summary><p>Turn Yellow off before saving to try a missing buzzer. Turn it back on and watch it catch up.</p><label style="display:flex;gap:10px;align-items:center"><input id="yellow-online" type="checkbox" style="width:auto;margin:0" checked>Yellow powered on</label><label style="display:flex;gap:10px;align-items:center;margin:12px 0"><input id="weak-signal" type="checkbox" style="width:auto;margin:0">Slow down delivery</label><button id="preview-reset" type="button">Start over</button><p id="preview-message" aria-live="polite"></p></details></aside>`;
 const controlsScript = `<script>
 async function simulate(values){const r=await fetch('/preview/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...values,csrf:'${csrf}'})});if(!r.ok)throw Error('Preview control failed');}
 const yellow=document.getElementById('yellow-online'), weak=document.getElementById('weak-signal');
@@ -56,9 +53,8 @@ yellow.onchange=()=>simulate({yellowOnline:yellow.checked});weak.onchange=()=>si
 document.getElementById('preview-reset').onclick=async()=>{await simulate({reset:true});location.href='/';};
 fetch('/preview/state').then(r=>r.json()).then(s=>{yellow.checked=s.devices[3].online;weak.checked=s.weakSignal;});
 </script>`;
-function page(authenticated, message = '') {
-  const body = authenticated ? formHtml : loginHtml;
-  return (raw('PAGE_START') + previewControls + (message ? `<p role="alert">${escape(message)}</p>` : '') + body)
+function page(message = '') {
+  return (raw('PAGE_START') + previewControls + (message ? `<p role="alert">${escape(message)}</p>` : '') + formHtml)
     .replace('</body>', controlsScript + '</body>');
 }
 function valid(fields) {
@@ -76,13 +72,11 @@ const server = createServer(async (req, res) => {
   const json = value => send(200, 'application/json', JSON.stringify(value));
   const redirect = () => { res.writeHead(303, { Location: '/' }); res.end(); };
   const route = new URL(req.url, 'http://localhost').pathname;
-  const session = /(?:^|;\s*)setup=([a-f0-9]+)/.exec(req.headers.cookie || '')?.[1];
-  const loggedIn = sessions.has(session);
   if (req.method === 'GET') {
-    if (route === '/status') return loggedIn ? json(status()) : send(403, 'text/plain', 'Sign in first');
+    if (route === '/status') return json(status());
     if (route === '/preview/state') return json(status());
     if (route === '/favicon.ico') return send(204, 'text/plain', '');
-    return send(200, 'text/html; charset=utf-8', page(loggedIn));
+    return send(200, 'text/html; charset=utf-8', page());
   }
   if (req.method !== 'POST') return send(405, 'text/plain', 'Method not allowed');
   let body = '';
@@ -100,28 +94,21 @@ const server = createServer(async (req, res) => {
     return json(status());
   }
   const fields = new URLSearchParams(body);
-  if (route === '/login') {
-    if (fields.get('password') !== password) return send(403, 'text/html; charset=utf-8', page(false, 'Incorrect setup page password. Try jeopardy-demo.'));
-    const session = randomBytes(16).toString('hex'); sessions.add(session);
-    res.setHeader('Set-Cookie', `setup=${session}; Path=/; HttpOnly; SameSite=Strict`);
-    return redirect();
-  }
-  if (!loggedIn || fields.get('csrf') !== csrf) return send(403, 'text/plain', 'Open the setup page and sign in again.');
+  if (fields.get('csrf') !== csrf) return send(403, 'text/plain', 'Reload the setup page and try again.');
   if (route === '/settings') {
-    if (releasing) return send(409, 'text/html; charset=utf-8', page(true, 'Setup has finished. Use Start over to try again.'));
-    if (!valid(fields)) return send(400, 'text/html; charset=utf-8', page(true, 'Choose a Wi-Fi name, use an 8–63 character password (or leave empty for open Wi-Fi), and enter a server address such as ws://192.168.1.42:3001/hardware/buzzers.'));
+    if (releasing) return send(409, 'text/html; charset=utf-8', page('Setup has finished. Use Start over to try again.'));
+    if (!valid(fields)) return send(400, 'text/html; charset=utf-8', page('Choose a Wi-Fi name, use an 8–63 character password (or leave empty for open Wi-Fi), and enter a server address such as ws://192.168.1.42:3001/hardware/buzzers.'));
     // Deliberately retain no submitted passwords or network/server addresses.
     devices.forEach(device => { device.saved = false; device.released = false; });
     savedAt = Date.now(); return redirect();
   }
   if (route === '/finish') {
-    if (!status().allSaved || releasing) return send(409, 'text/html; charset=utf-8', page(true, 'Wait for all four buzzers to save their settings.'));
+    if (!status().allSaved || releasing) return send(409, 'text/html; charset=utf-8', page('Wait for all four buzzers to save their settings.'));
     releasing = true; return redirect();
   }
   send(404, 'text/plain', 'Not found');
 });
 server.listen(Number(process.env.PREVIEW_PORT || 4176), '127.0.0.1', () => {
   console.log(`Jeopardy setup preview: http://127.0.0.1:${server.address().port}`);
-  console.log(`Demo setup page password: ${password}`);
   console.log('Simulation only: no real Wi-Fi changes. Ctrl+C stops the preview.');
 });

@@ -3,8 +3,8 @@
 ## Try the setup page without boards
 
 From the repo root, run `npm run preview:setup` and open
-[the local preview](http://127.0.0.1:4176). The setup page password is
-**jeopardy-demo**. Choose any sample Wi-Fi, enter a made-up password of at least
+[the local preview](http://127.0.0.1:4176). It opens directly to the setup form.
+Choose any sample Wi-Fi, enter a made-up password of at least
 eight characters, and use `ws://192.168.1.42:3001/hardware/buzzers` as the sample
 server address. Save, watch all four statuses, and Finish.
 
@@ -26,8 +26,7 @@ listens only on this computer, and Ctrl+C stops it. No extra dependencies needed
    phone does not open it, stay on this network despite its “no Internet” warning
    and open **http://192.168.4.1**. Captive popup behavior depends on the phone OS;
    HTTPS sites cannot be redirected to this HTTP setup page.
-3. Enter the setup page password (`webPassword`), then select your home Wi-Fi from
-   the dropdown and enter its password. A hidden network can be typed manually.
+3. Select your home Wi-Fi from the dropdown and enter its password. A hidden network can be typed manually.
    Blue scans once on startup; restart Blue in setup mode to refresh the list.
    Only 2.4 GHz networks work with these boards. Home passwords may be 8–63 bytes;
    an empty password means an open network. Enterprise Wi-Fi is not supported.
@@ -90,7 +89,7 @@ No battery thresholds, cutoff, sensing circuit, or wake source are assumed.
 
    Angle-bracket arguments above are placeholders, not literal PowerShell syntax.
    This writes git-ignored `factory.local.json` and refuses to overwrite it. Keep
-   this file private and backed up. It contains two setup passwords, four different
+   this file private and backed up. It contains the setup Wi-Fi password, four different
    backend tokens, separate PMKs and three pairwise ESP-NOW keys. Do not regenerate
    it for just one board: matching peers must be reflashed if pairing keys change.
 3. Copy each device's `token` from the private file into its matching backend
@@ -144,8 +143,9 @@ Wi-Fi failure retries every 10 seconds without clearing saved settings.
 The factory secrets and settings are stored in ordinary firmware/NVS on developer
 boards, without flash encryption or secure boot. Setup radio traffic is encrypted;
 this is not protection against reading a board's flash physically. The HTTP portal
-is accessible on the password-protected setup AP only; it uses a separate page
-password, a random HttpOnly session cookie, CSRF tokens, and no-store responses.
+is accessible on the password-protected setup AP only; it opens directly to the form without a page login, and uses CSRF tokens and
+no-store responses. The page login was removed at Matt's request after previewing
+the initial implementation; this supersedes the original issue wording.
 
 ## Repeatable automated verification
 
@@ -178,7 +178,7 @@ waits for #11/#18. Record date, image commit, board MAC/color, GPIO and phone OS
 
 1. Verify wrong setup AP password fails, the correct password connects, and the
    setup page automatically appears on the intended phones. Check the manual IP
-   fallback. Confirm the wrong page password cannot access settings or status.
+   fallback. Confirm the form opens directly with no page password prompt.
 2. Verify holding fewer than five seconds does not request setup on a configured
    board; a continuous five-second hold does. Check each fixed color in its log.
 3. Confirm nearby home SSIDs appear in the dropdown; test an SSID containing `&`

@@ -15,6 +15,6 @@ const devices = Object.fromEntries(colors.map((color, i) => [color, {
   ...(i ? { lmk: secret() } : {}),
 }]));
 writeFileSync('factory.local.json', JSON.stringify({
-  apPassword: secret(), webPassword: secret(), devices,
+  apPassword: secret(), devices,
 }, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
-console.log('Created factory.local.json. Keep this file private; it contains the setup passwords and four distinct backend tokens.');
+console.log('Created factory.local.json. Keep this file private; it contains the setup Wi-Fi password and four distinct backend tokens.');
