@@ -90,6 +90,22 @@ void distribution() {
   n.advance(18000);
   for (auto& node : n.nodes) check(node->canJoin(n.now), "Release retries let every device join");
 }
+void delayedRelease() {
+  Network n;
+  n.nodes[0]->configure(settings(), 91);
+  n.advance(2000);
+  check(n.nodes[0]->allSaved(), "All settings saved before release");
+  check(n.nodes[0]->finish(n.now), "Finish starts release");
+  n.offline = 1;
+  n.advance(18000);
+  check(!n.nodes[0]->canJoin(n.now), "Blue stays in setup while Green has not acknowledged release");
+  n.offline = -1;
+  n.advance(2000);
+  check(n.nodes[0]->progress(1).released, "Green receives release after the old ten-second retry window");
+  check(n.nodes[0]->canJoin(n.now), "Blue can join after all release receipts arrive");
+  n.advance(16000);
+  check(n.nodes[1]->canJoin(n.now), "Recovered Green can join independently");
+}
 void persistence() {
   Network n;
   check(n.nodes[0]->configure(settings(), 80), "Settings accepted");
@@ -140,7 +156,7 @@ void rejectStaleAndInvalid() {
 }
 int main() {
   try {
-    distribution(); persistence(); failedWritesAndAcks(); rejectStaleAndInvalid();
-    std::cout << "PASS: distribution, offline peer, retries, lost acknowledgments, storage failure, reboot, stale messages, channel barrier\n";
+    distribution(); delayedRelease(); persistence(); failedWritesAndAcks(); rejectStaleAndInvalid();
+    std::cout << "PASS: distribution, offline peer, delayed release recovery, retries, lost acknowledgments, storage failure, reboot, stale messages, channel barrier\n";
   } catch (const std::exception& e) { std::cerr << "FAIL: " << e.what() << '\n'; return 1; }
 }

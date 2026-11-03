@@ -128,13 +128,16 @@ fields. A staged record survives reboot and stays in setup; Blue can resume afte
 its own restart. The desktop harness uses actual files at this storage boundary.
 
 Finish is disabled until all four receipts arrive. Blue persists release, repeats
-the authenticated Release every 500 ms for 10 seconds, and stays on the setup
-channel for 15 seconds. Peers save release before acknowledging it and wait 15
+the authenticated Release every 500 ms to unacknowledged peers. Blue stays on the
+setup channel for at least 15 seconds and until all release receipts arrive.
+Peers save release before acknowledging it and wait 15
 seconds after their first Release before joining home Wi-Fi. Release duplicates
 do not restart the timer. This leaves time for retries before changing channels.
 
-Radio delivery can fail indefinitely. A device that misses every Release remains
-in setup; a power loss between Finish and delivery can also leave a partial group.
+Radio delivery can fail indefinitely. Blue keeps its setup page available and retries while a device has not confirmed
+Release. If that device briefly loses reception, delivery resumes when it returns.
+A permanently lost receipt after a peer has already left, or a power loss between
+Finish and delivery, can still leave a partial group.
 Recovery is to hold startup buttons on all four again, connect to Blue, and finish
 the saved configuration again (or save corrected settings). No device switches
 channels merely because a timeout expired while waiting for its settings. Home
@@ -159,7 +162,8 @@ The desktop harness compiles the same `provisioning.h` used by all board images.
 Windows requires Visual Studio C++ Build Tools; Linux/macOS require a C++17 compiler
 (`CXX` can select it). It substitutes only radio, time and persistent storage.
 It verifies an offline fourth board blocks Finish; dropped configuration packets,
-receipts and Release messages recover by retry; failed writes do not acknowledge;
+receipts and Release messages recover by retry (including an 18-second outage
+after Finish); failed writes do not acknowledge;
 Blue and peer restarts reload saved settings; staged peers do not leave setup;
 completed peers restart onto their home Wi-Fi; and stale nonces/transactions and
 invalid backend URLs do not bypass the channel barrier. Temporary files and the

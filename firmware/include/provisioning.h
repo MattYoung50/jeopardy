@@ -6,7 +6,6 @@
 namespace provisioning {
 constexpr uint8_t CHANNEL = 1;
 constexpr uint32_t RETRY_MS = 500;
-constexpr uint32_t RELEASE_MS = 10000;
 constexpr uint32_t JOIN_MS = 15000;
 constexpr const char* COLORS[] = {"blue", "green", "red", "yellow"};
 
@@ -84,7 +83,11 @@ class Setup {
     return true;
   }
   bool releasing() const { return releasing_; }
-  bool canJoin(uint32_t now) const { return releasing_ && uint32_t(now - releaseAt_) >= JOIN_MS; }
+  bool canJoin(uint32_t now) const {
+    if (!releasing_ || uint32_t(now - releaseAt_) < JOIN_MS) return false;
+    if (id_ == 0) for (auto& p : progress_) if (!p.released) return false;
+    return true;
+  }
 
   bool configure(const Settings& settings, uint64_t transaction) {
     if (id_ != 0 || releasing_ || !transaction || !valid(settings)) return false;
@@ -163,7 +166,7 @@ class Setup {
       packet.nonce = peerNonces_[peer];
       packet.transaction = saved_.transaction;
       if (releasing_) {
-        if (uint32_t(now - releaseAt_) > RELEASE_MS) continue;
+        if (progress_[peer].released) continue;
         packet.kind = Kind::Release;
       } else {
         if (progress_[peer].saved) continue;
