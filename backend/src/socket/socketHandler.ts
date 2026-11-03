@@ -1,3 +1,5 @@
+import { getBuzzerAvailability, onAvailabilityChange, validatePhysicalClaim } from './gameManager/reservations.js';
+import type { PhysicalColor } from '../shared/types.js';
 import type { Server, Socket } from 'socket.io';
 import * as gm from './gameManager.js';
 import * as boardStorage from '../storage/boardStorage.js';
@@ -82,9 +84,18 @@ function startIdleSessionReaper(io: Server) {
 
 export function registerSocketHandlers(io: Server) {
   startIdleSessionReaper(io);
+  const unsubscribe = onAvailabilityChange(() => {
+    for (const client of io.sockets.sockets.values()) if (client.data.buzzerRoom) client.emit(SOCKET_EVENTS.BUZZER_AVAILABILITY, getBuzzerAvailability(client.data.buzzerRoom));
+  });
+  io.engine.on('close', unsubscribe);
 
   io.on('connection', (socket: Socket) => {
     registerFinalHandlers(io, socket, socketPlayers);
+    socket.on(SOCKET_EVENTS.WATCH_BUZZERS, ({ roomCode }: { roomCode: string }) => {
+      if (typeof roomCode !== 'string') return;
+      socket.data.buzzerRoom = roomCode;
+      socket.emit(SOCKET_EVENTS.BUZZER_AVAILABILITY, getBuzzerAvailability(roomCode));
+    });
 
     // ── HOST: create a game session ──────────────────────────────────────
     socket.on(SOCKET_EVENTS.HOST_CREATE, ({ boardId }: { boardId: string }) => {
@@ -106,11 +117,17 @@ export function registerSocketHandlers(io: Server) {
     });
 
     // ── PLAYER: join a game room ─────────────────────────────────────────
-    socket.on(SOCKET_EVENTS.PLAYER_JOIN, ({ roomCode, name, color }: { roomCode: string; name: string; color: string }) => {
+    socket.on(SOCKET_EVENTS.PLAYER_JOIN, ({ roomCode, name, color, physicalColor }: { roomCode: string; name: string; color: string; physicalColor?: PhysicalColor }) => {
       const session = gm.getSession(roomCode);
       if (!session) return socket.emit('error', { message: 'Room not found' });
       if (gm.isNameTaken(session, name)) return socket.emit('error', { message: 'That name is already taken in this game' });
-      const player = gm.addPlayer(roomCode, name, color);
+      if (socketPlayers.has(socket.id)) return socket.emit('error', { message: 'Already joined a game' });
+      const claimError = validatePhysicalClaim(roomCode, physicalColor);
+      if (claimError) {
+        socket.emit(SOCKET_EVENTS.BUZZER_AVAILABILITY, getBuzzerAvailability(roomCode));
+        return socket.emit('error', { message: claimError });
+      }
+      const player = gm.addPlayer(roomCode, name, color, physicalColor);
       if (!player) return socket.emit('error', { message: 'Could not join room' });
       socketPlayers.set(socket.id, { roomCode, playerId: player.id, playerName: name });
       socket.join(roomCode);

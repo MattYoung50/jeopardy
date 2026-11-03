@@ -1,3 +1,4 @@
+import { setDeviceOnline } from './socket/gameManager/reservations.js';
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -28,7 +29,10 @@ const io = new Server(httpServer, {
 
 attachHardwareBuzzers(httpServer, {
   tokens: hardwareTokens,
-  onEvent: event => console.log('[hardware]', JSON.stringify(event)),
+  onEvent: event => {
+    if (event.type !== 'press') setDeviceOnline(event.deviceId, event.type === 'connected');
+    console.log('[hardware]', JSON.stringify(event));
+  },
 });
 console.log(`[hardware] ${hardwareTokens ? 'Enabled at /hardware/buzzers' : 'Disabled: no device tokens configured'}`);
 
