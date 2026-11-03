@@ -79,7 +79,11 @@ export function addPlayer(roomCode: string, name: string, color: string, physica
   const session = sessions.get(roomCode);
   if (!session) return null;
   if (session.phase === 'finished' || isNameTaken(session, name) || validatePhysicalClaim(roomCode, physicalColor)) return null;
-  const player: Player = { id: uuidv4(), name, score: 0, color, physicalColor };
+  const player: Player = {
+    id: uuidv4(), name, score: 0,
+    color: physicalColor ?? color,
+    physicalColor,
+  };
   session.players.push(player);
   availabilityChanged();
   return player;

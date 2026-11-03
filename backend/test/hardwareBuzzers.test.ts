@@ -301,6 +301,7 @@ test('physical reservations enforce exclusivity and survive disconnects until li
     assert.equal(claims.filter(Boolean).length, 1);
     const owner = claims[0]!;
     assert.equal(owner.physicalColor, 'blue');
+    assert.equal(owner.color, 'blue');
     assert(gm.addPlayer(b.roomCode, 'Browser only', '#fff'));
     setDeviceOnline('blue', false);
     assert.equal(owner.physicalColor, 'blue');
