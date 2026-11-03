@@ -23,4 +23,3 @@ if (process.platform === 'win32') {
   run(process.env.CXX ?? 'c++', ['-std=c++17', '-Wall', '-Wextra', '-Werror', '-Iinclude', 'test/setup_test.cpp', '-o', executable]);
   run(executable, [], out);
 }
-
