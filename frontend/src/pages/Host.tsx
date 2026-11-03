@@ -240,6 +240,7 @@ export default function Host() {
   }
   const boardUrl = `${window.location.origin}/board/${roomCode}`;
   const buzzUrl = `${window.location.origin}/buzz/${roomCode}`;
+  const qrUrl = `${window.location.origin}/qr/${roomCode}`;
 
   // Per-player stats come from the server (survives refresh, includes early buzzes)
   const playerStats = gameState.players.map(p => ({
@@ -373,8 +374,9 @@ export default function Host() {
 
           {/* Share links */}
           <div className="mt-4 space-y-2">
-            <ShareLink label="Board view (project this)" url={boardUrl} />
-            <ShareLink label="Player buzzer (share with players)" url={buzzUrl} />
+            <ShareLink label="Board view (project this)" url={boardUrl} open />
+            <ShareLink label="Player buzzer (share with players)" url={buzzUrl} open />
+            <ShareLink label="Player QR code (project this)" url={qrUrl} open />
           </div>
         </div>
 

@@ -4,14 +4,20 @@
   "description": "Jeopardy board web interface for host and contestants",
   "type": "module",
   "scripts": {
+    "test": "tsx --test test/*.test.tsx",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
-  "keywords": ["jeopardy", "game", "react"],
+  "keywords": [
+    "jeopardy",
+    "game",
+    "react"
+  ],
   "author": "Natah",
   "license": "MIT",
   "dependencies": {
+    "qrcode.react": "^4.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.1",
@@ -19,12 +25,17 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
+    "jsdom": "^22.1.0",
+    "jsqr": "^1.4.0",
+    "pngjs": "^7.0.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.23.15",
     "typescript": "^5.3.3",
     "vite": "^5.0.8"
   }
