@@ -10,17 +10,27 @@ import boardsRouter from './routes/boards.js';
 import mediaRouter from './routes/media.js';
 import { registerSocketHandlers } from './socket/socketHandler.js';
 import { CONTENT_TYPE_BY_EXT } from './mediaTypes.js';
+import { attachHardwareBuzzers, readDeviceTokens } from './hardware/buzzers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3001);
 const DATA_DIR = process.env.DATA_DIR ?? './data';
+const hardwareTokens = readDeviceTokens();
 
 const app = express();
 const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
+  // The hardware handler owns non-Socket.IO upgrades, including rejecting unknown paths.
+  destroyUpgrade: false,
 });
+
+attachHardwareBuzzers(httpServer, {
+  tokens: hardwareTokens,
+  onEvent: event => console.log('[hardware]', JSON.stringify(event)),
+});
+console.log(`[hardware] ${hardwareTokens ? 'Enabled at /hardware/buzzers' : 'Disabled: no device tokens configured'}`);
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
