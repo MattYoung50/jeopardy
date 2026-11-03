@@ -2,6 +2,9 @@
 
 A self-hosted, fully customizable Jeopardy game platform. Build your own boards, host game nights in person or online, and let players buzz in from their phones — no app install required.
 
+Hardware buzzer Phase 1: see [setup, protocol, simulator, and tests](docs/hardware-buzzers.md)
+and the [wireless buzzer gameplan](docs/hardware-buzzer-gameplan.md).
+
 ---
 
 ## Features
